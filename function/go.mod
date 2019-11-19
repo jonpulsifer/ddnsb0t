@@ -1,4 +1,4 @@
-module github.com/jonpulsifer/ddnsb0t/cmd/function
+module github.com/jonpulsifer/ddnsb0t/function
 
 go 1.13
 
