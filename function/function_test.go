@@ -3,7 +3,7 @@ package updateddns
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/jonpulsfier/ddnsb0t/pkg/ddns"
+	"github.com/jonpulsifer/ddnsb0t/pkg/ddns"
 	dns "google.golang.org/api/dns/v1"
 	"net/http/httptest"
 	"reflect"

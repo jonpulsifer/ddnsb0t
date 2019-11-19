@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	ddns "github.com/jonpulsifer/ddnsb0t/pkg/ddns"
+	"github.com/jonpulsifer/ddnsb0t/pkg/ddns"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
