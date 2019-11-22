@@ -17,13 +17,10 @@ import (
 	"time"
 )
 
-const (
-	fnURL string = "https://us-east4-homelab-ng.cloudfunctions.net/ddns"
-)
-
 var (
 	apiToken string
 	dnsName  string
+	endpoint string
 	external bool
 	once     bool
 	interval time.Duration
@@ -38,28 +35,28 @@ func main() {
 	p.Description = "A bot that fires a JSON blob down range to my cloud function"
 
 	p.FlagSet = flag.NewFlagSet("global", flag.ExitOnError)
-	p.FlagSet.StringVar(&dnsName, "hostname", "", "the DNS name to update")
-	p.FlagSet.StringVar(&apiToken, "token", "", "API token for the cloud function")
+	p.FlagSet.StringVar(&endpoint, "endpoint", os.Getenv("DDNS_ENDPOINT"), "the remote URL for the cloud function")
+	p.FlagSet.StringVar(&dnsName, "hostname", os.Getenv("DDNS_HOSTNAME"), "the DNS hostname name to update")
+	p.FlagSet.StringVar(&apiToken, "token", os.Getenv("DDNS_API_TOKEN"), "API token for the cloud function")
 	p.FlagSet.DurationVar(&interval, "interval", 5*time.Minute, "how long between each update (eg. 30s, 5m, 1h)")
 	p.FlagSet.BoolVar(&external, "external", false, "use your external IP address")
 	p.FlagSet.BoolVar(&once, "once", false, "run the thing once")
 	p.FlagSet.BoolVar(&verbose, "verbose", false, "enable debug logging")
 
 	p.Before = func(ctx context.Context) error {
-		if len(dnsName) == 0 {
+		if endpoint == "" {
+			logrus.Fatalf("endpoint not found")
+		}
+		if dnsName == "" {
 			hostname, err := os.Hostname()
 			if err != nil {
 				return err
 			}
 			dnsName = hostname
-			logrus.Infof("using %s for DNS name", hostname)
+			logrus.Infof("Hostname not configured, defaulting to `%s`", hostname)
 		}
 		if len(apiToken) == 0 {
-			logrus.Infof("using DDNS_API_TOKEN environment variable")
-			apiToken = os.Getenv("DDNS_API_TOKEN")
-			if len(apiToken) == 0 {
-				logrus.Fatalf("API token not found")
-			}
+			logrus.Fatalf("API token not configured")
 		}
 		if verbose {
 			logrus.SetLevel(logrus.DebugLevel)
@@ -96,11 +93,8 @@ func main() {
 				return err
 			}
 		}
-
 		return nil
-
 	}
-
 	p.Run()
 }
 
@@ -131,7 +125,7 @@ func update() error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", fnURL, bytes.NewBuffer(requestJSON))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(requestJSON))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}

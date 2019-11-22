@@ -1,17 +1,17 @@
-package updateddns
+package cloudfunction
 
 import (
+	"cloud.google.com/go/compute/metadata"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"os"
-	"strings"
-
 	"github.com/jonpulsifer/ddnsb0t/pkg/ddns"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	dns "google.golang.org/api/dns/v1"
+	"net/http"
+	"os"
+	"strings"
 )
 
 func init() {
@@ -20,23 +20,31 @@ func init() {
 
 // UpdateDDNS is an HTTP Cloud Function with a request parameter.
 func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
-	var apiToken = os.Getenv("API_TOKEN")
+	var apiToken = os.Getenv("DDNS_API_TOKEN")
 	var project = os.Getenv("GCP_PROJECT")
 	var request ddns.Request
-	var defaultDomain string = os.Getenv("DEFAULT_DOMAIN")
+	var domain = os.Getenv("DDNS_DOMAIN")
+
+	if domain == "" {
+		log.Fatalf("Domain name not set")
+	}
+
+	if apiToken == "" {
+		log.Warnf("API token not set, anonymous requests enabled")
+	}
 
 	if project == "" {
-		project = "homelab-ng"
+		projectFromMetadata, ok := metadata.ProjectID()
+		if ok != nil {
+			log.Fatalf("Could not determine GCP project")
+		}
+		project = projectFromMetadata
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		log.Errorf("Could not decode request JSON: %v", err.Error())
 		return
-	}
-	if defaultDomain == "" {
-		defaultDomain = "home.pulsifer.ca"
 	}
 
 	if request.APIToken != apiToken {
@@ -44,21 +52,12 @@ func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Invalid API token received: %s", request.APIToken)
 		return
 	}
-	if len(strings.Split(request.DNSName, ".")) < 3 {
-		fqdn := strings.Join(append(strings.Split(request.DNSName, "."), defaultDomain), ".")
 
-		log.WithFields(log.Fields{
-			"project": project,
-			"dnsame":  request.DNSName,
-			"ip":      request.IPAddress,
-			"fqdn":    fqdn,
-		}).Infof("Hostname detected, appending default domain. FQDN: %s", fqdn)
-
-		request.DNSName = fqdn
+	cleanDNSName, err := cleanDNSName(request.DNSName, domain)
+	if err != nil {
+		log.Fatalf("Could not clean DNS name: %v", err.Error())
 	}
-	if !strings.HasSuffix(request.DNSName, ".") {
-		request.DNSName = request.DNSName + "."
-	}
+	request.DNSName = cleanDNSName
 
 	client, err := getCloudDNSService()
 	if err != nil {
@@ -71,7 +70,7 @@ func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		log.WithFields(log.Fields{
 			"project": project,
-			"dnsame":  request.DNSName,
+			"dnsname": request.DNSName,
 			"ip":      request.IPAddress,
 		}).Fatalf("Could not get Managed Zone: %v", err.Error())
 	}
@@ -95,11 +94,30 @@ func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(log.Fields{
 		"project":     project,
 		"managedZone": managedZone.Name,
-		"dnsame":      request.DNSName,
+		"dnsname":     request.DNSName,
 		"ip":          request.IPAddress,
 		"status":      change.Status,
 		"statuscode":  change.HTTPStatusCode,
 	}).Infof("DNS Change Requested")
+}
+
+func cleanDNSName(DNSName string, domain string) (string, error) {
+	splitDNS := strings.Split(DNSName, ".")
+	hostname := splitDNS[0]
+	if hostname == "" {
+		return "", errors.New("Request does not contain hostname")
+	}
+	if len(splitDNS) < 3 {
+		log.WithFields(log.Fields{
+			"DNSName": DNSName,
+			"domain":  domain,
+		}).Debugf("Hostname or local domain detected, appending domain")
+		DNSName = hostname + "." + domain
+	}
+	if !strings.HasSuffix(DNSName, ".") {
+		return DNSName + ".", nil
+	}
+	return DNSName, nil
 }
 
 func getCloudDNSService() (*dns.Service, error) {
