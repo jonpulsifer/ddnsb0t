@@ -1,12 +1,13 @@
-name: Go
-on: [push]
+name: ddnsb0t
+on:
+  push:
+    paths-ignore:
+    - "function/**"
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
       with:
@@ -15,6 +16,12 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
+      
+    - name: Download go modules
+      run: go mod download
+
+    - name: Verify go modules
+      run: go mod verify
 
     - name: Build
       run: go build -v .

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 function deploy(){
   gcloud functions deploy ddns \
     --trigger-http \
