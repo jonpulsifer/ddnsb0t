@@ -1,36 +1,34 @@
 package cloudfunction
 
 import (
-	dns "google.golang.org/api/dns/v1"
 	"reflect"
 	"testing"
+
+	dns "google.golang.org/api/dns/v1"
 )
 
 func Test_cleanDNSName(t *testing.T) {
 	var (
-		testDomain   = "pulsifer.dev"
-		testHostname = "test"
-		want         = testHostname + "." + testDomain + "."
+		testDomain = "pulsifer.dev"
+		want       = testDomain + "."
 	)
 	tests := []struct {
 		name    string
 		DNSName string
-		domain  string
 		want    string
 		wantErr bool
 	}{
-		{name: "domain with trailing dot", DNSName: testHostname, domain: testDomain + ".", want: want},
-		{name: "hostname only", DNSName: "test", domain: testDomain, want: want},
-		{name: "hostname with trailing dot", DNSName: testHostname + ".", domain: testDomain + ".", want: want},
-		{name: "no hostname", DNSName: "", domain: testDomain, want: "", wantErr: true},
-		{name: "fqdn", DNSName: "test.pulsifer.dev", domain: testDomain, want: want},
-		{name: "fqdn with trailing dot", DNSName: "test.pulsifer.dev.", domain: testDomain, want: want},
-		{name: "short domain name", DNSName: "test.local", domain: testDomain, want: want},
+		{name: "hostname only", DNSName: testDomain, want: want},
+		{name: "hostname with trailing dot", DNSName: testDomain + ".", want: want},
+		{name: "only hostname", DNSName: "test", want: "", wantErr: true},
+		{name: "no hostname", DNSName: "", want: "", wantErr: true},
+		{name: "fqdn", DNSName: "test." + testDomain, want: "test." + want},
+		{name: "fqdn with trailing dot", DNSName: "test." + testDomain + ".", want: "test." + want},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cleanDNSName(tt.DNSName, tt.domain)
+			got, err := cleanDNSName(tt.DNSName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getManagedZoneFromDNSName() error = %v, wantErr %v", err, tt.wantErr)
 				return

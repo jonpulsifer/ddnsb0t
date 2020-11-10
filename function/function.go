@@ -1,17 +1,18 @@
 package cloudfunction
 
 import (
-	"cloud.google.com/go/compute/metadata"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"os"
+	"strings"
+
+	"cloud.google.com/go/compute/metadata"
 	"github.com/jonpulsifer/ddnsb0t/pkg/ddns"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	dns "google.golang.org/api/dns/v1"
-	"net/http"
-	"os"
-	"strings"
 )
 
 func init() {
@@ -23,11 +24,6 @@ func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
 	var apiToken = os.Getenv("DDNS_API_TOKEN")
 	var project = os.Getenv("GCP_PROJECT")
 	var request ddns.Request
-	var domain = os.Getenv("DDNS_DOMAIN")
-
-	if domain == "" {
-		log.Fatalf("Domain name not set")
-	}
 
 	if apiToken == "" {
 		log.Warnf("API token not set, anonymous requests enabled")
@@ -53,7 +49,7 @@ func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cleanDNSName, err := cleanDNSName(request.DNSName, domain)
+	cleanDNSName, err := cleanDNSName(request.DNSName)
 	if err != nil {
 		log.Fatalf("Could not clean DNS name: %v", err.Error())
 	}
@@ -101,19 +97,12 @@ func UpdateDDNS(w http.ResponseWriter, r *http.Request) {
 	}).Infof("DNS Change Requested")
 }
 
-func cleanDNSName(DNSName string, domain string) (string, error) {
+func cleanDNSName(DNSName string) (string, error) {
 	splitDNS := strings.Split(DNSName, ".")
-	hostname := splitDNS[0]
-	if hostname == "" {
-		return "", errors.New("Request does not contain hostname")
-	}
 	if len(splitDNS) < 3 {
-		log.WithFields(log.Fields{
-			"DNSName": DNSName,
-			"domain":  domain,
-		}).Debugf("Hostname or local domain detected, appending domain")
-		DNSName = hostname + "." + domain
+		return "", errors.New(DNSName + " is not a valid domain")
 	}
+
 	if !strings.HasSuffix(DNSName, ".") {
 		return DNSName + ".", nil
 	}
