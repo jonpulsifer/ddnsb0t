@@ -3,6 +3,7 @@ on:
   push:
     paths-ignore:
     - "function/**"
+    - ".github/**"
 jobs:
   build:
     name: Build
