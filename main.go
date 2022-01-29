@@ -97,9 +97,7 @@ func main() {
 	}
 
 	p.Action = func(ctx context.Context, args []string) error {
-
 		ticker := time.NewTicker(interval)
-
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
 		signal.Notify(c, syscall.SIGTERM)
@@ -136,12 +134,11 @@ func update() error {
 		FQDN:  hostname,
 	}
 
-	ip, err := GetIP(external)
+	var err error
+	request.IP, err = GetIP(external)
 	if err != nil {
 		return err
 	}
-
-	request.IP = ip
 
 	return sendRequest(request)
 }
@@ -153,7 +150,7 @@ func sendRequest(request ddns.Request) error {
 
 	c, err := cloudevents.NewClientHTTP()
 	if err != nil {
-		log.Fatalf("Failed to create client, %v", err)
+		log.Fatalf("Failed to create client: %v", err)
 	}
 
 	ctx := cloudevents.ContextWithTarget(context.Background(), endpoint)
@@ -163,7 +160,7 @@ func sendRequest(request ddns.Request) error {
 	}).Debugf("Dispatched cloudevent")
 
 	if cloudevents.IsUndelivered(result) || cloudevents.IsNACK(result) {
-		log.Fatalf("failed to deliver cloudevent, %v", result)
+		log.Fatalf("Failed to deliver cloudevent: %v", result)
 	}
 
 	log.Debugf("raw cloudevent:\n%v", response)
