@@ -34,6 +34,7 @@ func main() {
 	p := cli.NewProgram()
 	p.Name = "ddnsb0t"
 	p.Description = "A bot that fires a CloudEvent down range to a cloud function to update my DNS records in Google Cloud"
+	p.Version = "0.0.2"
 
 	p.FlagSet = flag.NewFlagSet("global", flag.ExitOnError)
 	p.FlagSet.BoolVar(&external, "external", false, "use the network's external IP address")
@@ -135,19 +136,9 @@ func update() error {
 		FQDN:  hostname,
 	}
 
-	var GetIP func() (string, error)
-	if external {
-		GetIP = GetExternalIP
-	} else {
-		GetIP = GetInternalIP
-	}
-
-	ip, err := GetIP()
+	ip, err := GetIP(external)
 	if err != nil {
 		return err
-	}
-	if net.ParseIP(ip) == nil {
-		log.Fatalf("Could not determine IP address, got: %s", ip)
 	}
 
 	request.IP = ip
@@ -194,33 +185,40 @@ func sendRequest(request ddns.Request) error {
 	return nil
 }
 
-// GetInternalIP mocks a connection using net.Dial but does not actually make a request
-func GetInternalIP() (string, error) {
-	// mock a connection, this does not make a request
-	conn, err := net.Dial("udp", "1.1.1.1:53")
-	if err != nil {
-		return "", err
-	}
-	return strings.Split(conn.LocalAddr().String(), ":")[0], nil
-}
-
-// GetExternalIP uses Cloudflare's whoami.cloudflare TXT record cheatcode to get the external IP address
+// GetIP returns the program's IP address, internal or external
+// Uses a custom dialer to get the appropriate interface with internet access
+// Uses Cloudflare's whoami.cloudflare TXT record cheatcode to get the external IP address
 // dig -4 ch txt whoami.cloudflare @1.1.1.1
-func GetExternalIP() (string, error) {
-	m := new(dns.Msg)
-	m.Id = dns.Id()
-	m.RecursionDesired = true
-	m.Question = make([]dns.Question, 1)
-	m.Question[0] = dns.Question{Name: "whoami.cloudflare.", Qtype: dns.TypeTXT, Qclass: dns.ClassCHAOS}
+func GetIP(external bool) (string, error) {
+	var ip string
+	if external {
+		m := new(dns.Msg)
+		m.Id = dns.Id()
+		m.RecursionDesired = true
+		m.Question = make([]dns.Question, 1)
+		m.Question[0] = dns.Question{Name: "whoami.cloudflare.", Qtype: dns.TypeTXT, Qclass: dns.ClassCHAOS}
 
-	c := new(dns.Client)
-	in, _, err := c.Exchange(m, "1.1.1.1:53")
-	if err != nil {
+		c := new(dns.Client)
+		in, _, err := c.Exchange(m, "1.1.1.1:53")
+		if err != nil {
+			return "", err
+		}
+
+		if t, ok := in.Answer[0].(*dns.TXT); ok {
+			ip = t.Txt[0]
+		}
 		return "", err
+	} else {
+		// mock a connection, this does not make a request
+		conn, err := net.Dial("udp", "1.1.1.1:53")
+		if err != nil {
+			return "", err
+		}
+		ip = strings.Split(conn.LocalAddr().String(), ":")[0]
 	}
 
-	if t, ok := in.Answer[0].(*dns.TXT); ok {
-		return t.Txt[0], nil
+	if net.ParseIP(ip) == nil {
+		log.Fatalf("Could not determine IP address, got: %s", ip)
 	}
-	return "", err
+	return ip, nil
 }
