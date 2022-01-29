@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"flag"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -29,8 +26,6 @@ var (
 	hostname    string
 	interval    time.Duration
 	once        bool
-	request     ddns.Request
-	response    ddns.Response
 	token       string
 	verbose     bool
 )
@@ -61,7 +56,7 @@ func main() {
 		}
 
 		if endpoint == "" {
-			log.Fatalf("endpoint not found")
+			log.Fatalf("Endpoint not found")
 		}
 
 		if token == "" {
@@ -71,7 +66,7 @@ func main() {
 		if hostname == "" {
 			OSHostname, err := os.Hostname()
 			if err != nil {
-				log.Fatalf("could not get hostname from OS and hostname not set: %q", err)
+				log.Fatalf("Could not get hostname from OS and hostname not set: %q", err)
 			}
 			log.WithFields(log.Fields{
 				"hostname": hostname,
@@ -96,24 +91,6 @@ func main() {
 
 		if !dns.IsFqdn(hostname) || dns.CountLabel(hostname) < 2 {
 			log.Fatalf("Could not determine fully qualified domain name, got: %s", hostname)
-		}
-
-		if external {
-			externalIP, err := GetExternalIP()
-			if err != nil {
-				return err
-			}
-			request.IP = externalIP
-		} else {
-			internalIP, err := GetInternalIP()
-			if err != nil {
-				return err
-			}
-			request.IP = internalIP
-		}
-
-		if net.ParseIP(request.IP) == nil {
-			log.Fatalf("could not determine IP address, got: %s", request.IP)
 		}
 		return nil
 	}
@@ -153,13 +130,27 @@ func main() {
 }
 
 func update() error {
-	request.Token = token
-	request.FQDN = hostname
+	request := ddns.Request{
+		Token: token,
+		FQDN:  hostname,
+	}
 
-	log.WithFields(log.Fields{
-		"ip":   request.IP,
-		"name": request.FQDN,
-	}).Debugf("Built Request")
+	var GetIP func() (string, error)
+	if external {
+		GetIP = GetExternalIP
+	} else {
+		GetIP = GetInternalIP
+	}
+
+	ip, err := GetIP()
+	if err != nil {
+		return err
+	}
+	if net.ParseIP(ip) == nil {
+		log.Fatalf("Could not determine IP address, got: %s", ip)
+	}
+
+	request.IP = ip
 
 	return sendRequest(request)
 }
@@ -167,71 +158,40 @@ func update() error {
 // sendRequest fires a ddns.Request in the form of a cloud event to a receiver
 func sendRequest(request ddns.Request) error {
 	event := ddns.GenerateCloudEventRequest(request)
-	eventBytes, err := event.MarshalJSON()
+	log.Debugf("Raw cloudevent:\n%v", event)
+
+	c, err := cloudevents.NewClientHTTP()
 	if err != nil {
-		return err
-	}
-	log.Debugf("raw cloudevent:\n%v", event)
-
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(eventBytes))
-	req.Header.Set("Content-Type", cloudevents.ApplicationJSON)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
+		log.Fatalf("Failed to create client, %v", err)
 	}
 
-	responseEvent := cloudevents.NewEvent()
-	if err := responseEvent.UnmarshalJSON(respBody); err != nil {
-		return err
+	ctx := cloudevents.ContextWithTarget(context.Background(), endpoint)
+	response, result := c.Request(ctx, event)
+	log.WithFields(log.Fields{
+		"endpoint": endpoint,
+	}).Debugf("Dispatched cloudevent")
+
+	if cloudevents.IsUndelivered(result) || cloudevents.IsNACK(result) {
+		log.Fatalf("failed to deliver cloudevent, %v", result)
 	}
 
-	if responseEvent.Type() != ddns.CloudEventResponseType {
-		log.Fatalf("Response was not of the expected type, expected %s, got: %s", ddns.CloudEventResponseType, responseEvent.Type())
+	log.Debugf("raw cloudevent:\n%v", response)
+	if response.Type() != ddns.CloudEventResponseType {
+		log.Fatalf("Response was not of the expected type, expected %s, got: %s", ddns.CloudEventResponseType, response.Type())
 	}
 
-	if err := responseEvent.DataAs(&response); err != nil {
+	ddnsResponse := ddns.Response{}
+	if err := response.DataAs(&ddnsResponse); err != nil {
 		log.Fatalf("Could not decode response: %v", err.Error())
 	}
+
 	log.WithFields(log.Fields{
-		"fqdn":   response.FQDN,
+		"fqdn":   ddnsResponse.FQDN,
 		"ip":     request.IP,
-		"status": response.Status,
+		"status": ddnsResponse.Status,
 	}).Infof("dns update requested")
-	log.Debugf("raw cloudevent:\n%v", responseEvent)
+
 	return nil
-
-	// Expand the CloudEvent function signatures to support reply #58
-	// https://github.com/GoogleCloudPlatform/functions-framework-go/issues/58
-	// c, err := cloudevents.NewDefaultClient()
-	// if err != nil {
-	// 	log.Fatalf("failed to create client, %v", err)
-	// }
-	// ctx := cloudevents.ContextWithTarget(context.Background(), endpoint)
-
-	// resp, result := c.Request(ctx, event)
-	// log.WithFields(log.Fields{
-	// 	"endpoint": endpoint,
-	// }).Debugf("Sent request")
-	// if cloudevents.IsUndelivered(result) {
-	// 	log.Fatalf("failed to send, %v", result)
-	// } else {
-	// 	log.Infof("event delivered at %s, ack: %t ", time.Now(), cloudevents.IsACK(result))
-	// 	var httpResult *cehttp.Result
-	// 	if cloudevents.ResultAs(result, &httpResult) {
-	// 		log.Infof("status code %d", httpResult.StatusCode)
-	// 	}
-	// 	if resp != nil {
-	// 		log.Infof("response:\n%s\n", resp)
-	// 	}
-	// }
 }
 
 // GetInternalIP mocks a connection using net.Dial but does not actually make a request
@@ -263,11 +223,4 @@ func GetExternalIP() (string, error) {
 		return t.Txt[0], nil
 	}
 	return "", err
-}
-
-// cloudflareDialer returns a custom dialer that uses 1.1.1.1 instead of the default resolver
-// https://github.com/golang/go/issues/19268
-func cloudflareDialer(ctx context.Context, network, address string) (net.Conn, error) {
-	d := net.Dialer{}
-	return d.DialContext(ctx, "udp", "1.1.1.1:53")
 }

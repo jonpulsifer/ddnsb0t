@@ -2,16 +2,18 @@ package function
 
 import (
 	"errors"
-	"io/ioutil"
 	"net/http"
+
+	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
+
 	"os"
 	"strings"
 
 	"cloud.google.com/go/compute/metadata"
-	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"context"
+	"github.com/cloudevents/sdk-go/v2/binding"
 	"github.com/jonpulsifer/ddnsb0t/pkg/ddns"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	dns "google.golang.org/api/dns/v1"
 )
 
@@ -52,21 +54,25 @@ func init() {
 	}
 }
 
-// DDNSCloudEventReceiver is an HTTP Cloud Event receiver expecting events of both
-// ddns.CloudEventRequestType and ddns.CloudEventResponseType
+// DDNSCloudEventReceiver is an HTTP Cloud Event receiver expecting
+// ddns.CloudEventRequestType events
 func DDNSCloudEventReceiver(w http.ResponseWriter, r *http.Request) {
-	respBody, err := ioutil.ReadAll(r.Body)
+	httpMessage := cehttp.NewMessageFromHttpRequest(r)
+	event, err := binding.ToEvent(httpMessage.Context(), httpMessage)
 	if err != nil {
+		log.Errorf("Could not convert http message to cloudevent: %v", err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 
-	event := cloudevents.NewEvent()
-	if err := event.UnmarshalJSON(respBody); err != nil {
-		log.Errorf("Could not convert to cloudevent: %v", err.Error())
+	if err := event.Validate(); err != nil {
+		log.Errorf("Could not validate cloudevent: %v", err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 
 	if event.Type() != ddns.CloudEventRequestType {
+		log.Errorf("Could not process type: %v", event.Type())
 		http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
 		return
 	}
@@ -91,20 +97,15 @@ func DDNSCloudEventReceiver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ddnsResponse := ddns.Response{
+	response := ddns.GenerateCloudEventResponse(ddns.Response{
 		FQDN:      request.FQDN,
 		Status:    change.Status,
 		Additions: len(change.Additions),
 		Deletions: len(change.Deletions),
-	}
+	})
 
-	response := ddns.GenerateCloudEventResponse(ddnsResponse)
-	responseBytes, err := response.MarshalJSON()
-	if err != nil {
-		log.Errorf("could not encode response: %v", err.Error())
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-	w.Write(responseBytes)
+	httpResponse := binding.ToMessage(&response)
+	cehttp.WriteResponseWriter(httpMessage.Context(), httpResponse, http.StatusOK, w)
 	log.WithFields(log.Fields{
 		"ce-id":     response.ID(),
 		"ce-source": response.Source(),
@@ -113,17 +114,6 @@ func DDNSCloudEventReceiver(w http.ResponseWriter, r *http.Request) {
 		"ddns-ip":   request.IP,
 	}).Infof("processed cloudevent")
 	log.Debugf("raw cloudevent response:\n%v", event)
-
-	// https://github.com/GoogleCloudPlatform/functions-framework-go/issues/58
-
-	// response := cloudevents.NewEvent(cloudevents.VersionV1)
-	// response.SetType("dev.pulsifer.ddns.response")
-	// response.SetSource("https://github.com/jonpulsifer/ddnsb0t/function")
-	// if err := response.SetData(cloudevents.ApplicationJSON, ddnsResponse); err != nil {
-	// 	return cloudevents.NewHTTPResult(500, "failed to set response data: %s", err)
-	// }
-
-	// return &response, nil
 }
 
 func updateDNS(request *ddns.Request) (*dns.Change, error) {
@@ -145,12 +135,12 @@ func updateDNS(request *ddns.Request) (*dns.Change, error) {
 	}
 
 	// get the current records for the requested endpoint
-	resp, err := client.ResourceRecordSets.List(project, managedZone.Name).Do()
+	records, err := client.ResourceRecordSets.List(project, managedZone.Name).Do()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, recordset := range resp.Rrsets {
+	for _, recordset := range records.Rrsets {
 		if recordset.Name == request.FQDN && recordset.Type == "A" {
 			deletions = append(deletions, recordset)
 		}
