@@ -2,8 +2,8 @@
 function deploy(){
   gcloud functions deploy ddns \
     --trigger-http \
-    --region=us-east4 \
-    --runtime=go113 \
+    --region=northamerica-northeast1 \
+    --runtime=go116 \
     --entry-point DDNSCloudEventReceiver \
     --project=homelab-ng \
     --service-account=ddns-function@homelab-ng.iam.gserviceaccount.com \
