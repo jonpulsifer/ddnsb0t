@@ -6,7 +6,7 @@ COPY . .
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -ldflags '-w -s' -o /go/bin/ddnsb0t
 
-FROM busybox:latest AS users
+FROM busybox:stable AS users
 
 FROM scratch
 USER 65534:65534
