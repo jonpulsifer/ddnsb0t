@@ -11,5 +11,5 @@ require (
 	github.com/jonpulsifer/ddnsb0t v0.0.0-20210206181125-b46f55886693
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/net v0.0.0-20220127074510-2fabfed7e28f // indirect
-	google.golang.org/api v0.66.0
+	google.golang.org/api v0.67.0
 )
