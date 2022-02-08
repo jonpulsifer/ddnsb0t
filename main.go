@@ -204,7 +204,6 @@ func GetIP(external bool) (string, error) {
 		if t, ok := in.Answer[0].(*dns.TXT); ok {
 			ip = t.Txt[0]
 		}
-		return "", err
 	} else {
 		// mock a connection, this does not make a request
 		conn, err := net.Dial("udp", "1.1.1.1:53")
