@@ -34,7 +34,7 @@ func main() {
 	p := cli.NewProgram()
 	p.Name = "ddnsb0t"
 	p.Description = "A bot that fires a CloudEvent down range to a cloud function to update my DNS records in Google Cloud"
-	p.Version = "0.0.2"
+	p.Version = "0.0.3"
 
 	p.FlagSet = flag.NewFlagSet("global", flag.ExitOnError)
 	p.FlagSet.BoolVar(&external, "external", false, "use the network's external IP address")
@@ -155,6 +155,10 @@ func sendRequest(request ddns.Request) error {
 
 	ctx := cloudevents.ContextWithTarget(context.Background(), endpoint)
 	response, result := c.Request(ctx, event)
+	if response == nil {
+		log.Fatalf("No response from endpoint (%s): %v", endpoint, result)
+	}
+
 	log.WithFields(log.Fields{
 		"endpoint": endpoint,
 	}).Debugf("Dispatched cloudevent")
@@ -163,7 +167,6 @@ func sendRequest(request ddns.Request) error {
 		log.Fatalf("Failed to deliver cloudevent: %v", result)
 	}
 
-	log.Debugf("raw cloudevent:\n%v", response)
 	if response.Type() != ddns.CloudEventResponseType {
 		log.Fatalf("Response was not of the expected type, expected %s, got: %s", ddns.CloudEventResponseType, response.Type())
 	}
