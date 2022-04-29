@@ -10,5 +10,5 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.9.0
 	github.com/jonpulsifer/ddnsb0t v0.0.0-20220429171223-3b3993dc8649
 	github.com/sirupsen/logrus v1.8.1
-	google.golang.org/api v0.76.0
+	google.golang.org/api v0.77.0
 )
