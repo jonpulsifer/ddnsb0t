@@ -235,6 +235,8 @@ github.com/jonpulsifer/ddnsb0t v0.0.0-20220430160428-299d6a28ee13 h1:qYQ+AHV5/eh
 github.com/jonpulsifer/ddnsb0t v0.0.0-20220430160428-299d6a28ee13/go.mod h1:ZDdmotGeqbAM7yeBgAeCRlagXQPKCIwyQYuuE1wkpTs=
 github.com/jonpulsifer/ddnsb0t v0.0.0-20220430193656-5d5d499a8bb4 h1:gwBsk/YRRS/lc/83jOv5tK+nceL1e6YpC+8PAf2GJo0=
 github.com/jonpulsifer/ddnsb0t v0.0.0-20220430193656-5d5d499a8bb4/go.mod h1:ZDdmotGeqbAM7yeBgAeCRlagXQPKCIwyQYuuE1wkpTs=
+github.com/jonpulsifer/ddnsb0t v0.0.0-20220430235211-f09b5d55a9dd h1:Uy3338T+wc8B29axXd/PqyDy47q0S+lX8y+B1T+hglY=
+github.com/jonpulsifer/ddnsb0t v0.0.0-20220430235211-f09b5d55a9dd/go.mod h1:ZDdmotGeqbAM7yeBgAeCRlagXQPKCIwyQYuuE1wkpTs=
 github.com/json-iterator/go v1.1.10 h1:Kz6Cvnvv2wGdaG/V8yMvfkmNiXq9Ya2KUv4rouJJr68=
 github.com/json-iterator/go v1.1.10/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
