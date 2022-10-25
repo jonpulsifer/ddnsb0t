@@ -5,7 +5,7 @@ go 1.19
 // replace github.com/jonpulsifer/ddnsb0t => ../
 
 require (
-	cloud.google.com/go/compute v1.10.0
+	cloud.google.com/go/compute v1.11.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.6.1
 	github.com/cloudevents/sdk-go/v2 v2.12.0
 	github.com/jonpulsifer/ddnsb0t v0.0.0-20220502134335-b2ba8f9e8568
@@ -32,7 +32,7 @@ require (
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20221018160656-63c7b68cfc55 // indirect
+	google.golang.org/genproto v0.0.0-20221024183307-1bc688fe9f3e // indirect
 	google.golang.org/grpc v1.50.1 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
