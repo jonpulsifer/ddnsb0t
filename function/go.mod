@@ -1,6 +1,6 @@
 module github.com/jonpulsifer/ddnsb0t/function
 
-go 1.16
+go 1.19
 
 // replace github.com/jonpulsifer/ddnsb0t => ../
 
