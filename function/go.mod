@@ -5,7 +5,8 @@ go 1.19
 // replace github.com/jonpulsifer/ddnsb0t => ../
 
 require (
-	cloud.google.com/go/compute v1.11.0
+	cloud.google.com/go/compute v1.12.1
+	cloud.google.com/go/compute/metadata v0.1.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.6.1
 	github.com/cloudevents/sdk-go/v2 v2.12.0
 	github.com/jonpulsifer/ddnsb0t v0.0.0-20220502134335-b2ba8f9e8568
