@@ -7,7 +7,7 @@ require (
 	github.com/genuinetools/pkg v0.0.0-20181022210355-2fcf164d37cb
 	github.com/google/uuid v1.3.0
 	github.com/miekg/dns v1.1.50
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 )
 
 require (
