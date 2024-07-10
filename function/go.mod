@@ -6,7 +6,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/compute v1.12.1
-	cloud.google.com/go/compute/metadata v0.4.0
+	cloud.google.com/go/compute/metadata v0.5.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.6.1
 	github.com/cloudevents/sdk-go/v2 v2.12.0
 	github.com/jonpulsifer/ddnsb0t v0.0.0-20220502134335-b2ba8f9e8568
@@ -30,7 +30,7 @@ require (
 	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b // indirect
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221024183307-1bc688fe9f3e // indirect
