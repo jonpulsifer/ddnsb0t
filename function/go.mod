@@ -10,7 +10,7 @@ require (
 	github.com/GoogleCloudPlatform/functions-framework-go v1.6.1
 	github.com/cloudevents/sdk-go/v2 v2.12.0
 	github.com/jonpulsifer/ddnsb0t v0.0.0-20220502134335-b2ba8f9e8568
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	google.golang.org/api v0.102.0
 )
 
